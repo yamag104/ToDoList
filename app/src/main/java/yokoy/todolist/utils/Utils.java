@@ -1,4 +1,4 @@
-package yokoy.todolist;
+package yokoy.todolist.utils;
 
 import android.app.Activity;
 import android.view.MotionEvent;

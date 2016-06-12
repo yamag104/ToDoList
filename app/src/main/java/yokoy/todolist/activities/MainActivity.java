@@ -1,13 +1,9 @@
-package yokoy.todolist;
+package yokoy.todolist.activities;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -18,15 +14,22 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.List;
+
+import yokoy.todolist.R;
+import yokoy.todolist.adapters.ToDoAdapter;
+import yokoy.todolist.models.ToDo;
+import yokoy.todolist.models.TodoItemDatabase;
+import yokoy.todolist.utils.Utils;
 
 public class MainActivity extends AppCompatActivity {
 
     // REQUEST_CODE can be any value we like, used to determine the result type later
     private final int REQUEST_CODE = 20;
 
-    ArrayList<String> todoItems;
-    ArrayAdapter<String> aToDoAdapter;
+    TodoItemDatabase database;
+    List<ToDo> todoItems;
+    ToDoAdapter adapter;
     ListView lvItems;
     EditText etEditText;
     int currentPosition;
@@ -38,22 +41,24 @@ public class MainActivity extends AppCompatActivity {
         populateArrayItems();
         Utils.setupTouchListener(this, findViewById(R.id.parent));
         lvItems = (ListView) findViewById(R.id.lvItems);
-        lvItems.setAdapter(aToDoAdapter);
+        lvItems.setAdapter(adapter);
         etEditText = (EditText) findViewById(R.id.etEditText);
         lvItems.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position,
                                            long id) {
+                adapter.notifyDataSetChanged();
+                ToDo deleteToDo = todoItems.get(position);
                 todoItems.remove(position);
-                aToDoAdapter.notifyDataSetChanged();
-                writeItems();
+                database.deleteToDo(deleteToDo);
                 return true;
             }
         });
         lvItems.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String clickedText = lvItems.getItemAtPosition(position).toString();
+                ToDo selectedToDo = (ToDo) lvItems.getItemAtPosition(position);
+                String clickedText = selectedToDo.title;
                 currentPosition = position;
                 launchEditItemView(clickedText);
             }
@@ -70,10 +75,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void editItem(String finalToDo, int position) {
+        ToDo currentTodo = todoItems.get(position);
+        ToDo updatedTodo = new ToDo(currentTodo.id, finalToDo, false);
         todoItems.remove(position);
-        todoItems.add(position, finalToDo);
-        aToDoAdapter.notifyDataSetChanged();
-        writeItems();
+        todoItems.add(position, updatedTodo);
+        database.updateToDo(updatedTodo);
+        adapter.notifyDataSetChanged();
     }
 
     public void launchEditItemView(String clickedText) {
@@ -86,34 +93,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void populateArrayItems() {
-        todoItems = new ArrayList<String>();
-        readItems();
-        aToDoAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, todoItems);
-    }
-
-    private void readItems() {
-        File filesDir = getFilesDir();
-        File file = new File(filesDir, "todo.txt");
-        try {
-            todoItems = new ArrayList<String>(FileUtils.readLines(file));
-        } catch (IOException e) {
-            System.out.println("File doesn't exist");
-        }
-    }
-
-    private void writeItems() {
-        File filesDir = getFilesDir();
-        File file = new File(filesDir, "todo.txt");
-        try {
-            FileUtils.writeLines(file, todoItems);
-        } catch (IOException e) {
-            System.out.println("File doesn't exist");
-        }
+        todoItems = new ArrayList<ToDo>();
+        database = TodoItemDatabase.getInstance(this);
+        todoItems = database.getAllToDos();
+        adapter = new ToDoAdapter(this, todoItems);
+        adapter.addAll(todoItems);
     }
 
     public void onAddItem(View view) {
-        aToDoAdapter.add(etEditText.getText().toString());
+        ToDo newTodo = new ToDo(0, etEditText.getText().toString(), false);
+        adapter.add(newTodo);
         etEditText.setText("");
-        writeItems();
+        database.addToDo(newTodo);
     }
 }

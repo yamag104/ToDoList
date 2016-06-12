@@ -1,10 +1,13 @@
-package yokoy.todolist;
+package yokoy.todolist.activities;
 
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
+
+import yokoy.todolist.R;
+import yokoy.todolist.utils.Utils;
 
 public class EditItemActivity extends AppCompatActivity {
 
