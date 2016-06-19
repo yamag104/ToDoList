@@ -7,7 +7,9 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import yokoy.todolist.R;
@@ -34,6 +36,11 @@ public class ToDoAdapter extends ArrayAdapter<ToDo> {
         TextView title = (TextView) convertView.findViewById(R.id.title);
         // Populate the data into the template view using the data object
         title.setText(toDo.title);
+        TextView duedateTextView = (TextView) convertView.findViewById(R.id.duedate_textview);
+        if (toDo.dueDate != null) {
+            String formattedDate = new SimpleDateFormat("dd/MM/yyyy, Ka").format(toDo.dueDate);
+            duedateTextView.setText(formattedDate);
+        }
         // Return the completed view to render on screen
         return convertView;
     }

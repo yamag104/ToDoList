@@ -5,23 +5,26 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Created by yokoy on 6/11/16.
  */
-public class TodoItemDatabase extends SQLiteOpenHelper{
+public class ToDoItemDatabase extends SQLiteOpenHelper{
 
-    private static TodoItemDatabase sInstance;
+    private static ToDoItemDatabase sInstance;
     SQLiteDatabase db;
 
     // Database Info
     private static final String DATABASE_NAME = "todoItemDB";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     // Table Names
     private static final String TABLE_TODOITEMS = "todoItems";
@@ -30,18 +33,19 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
     private static final String KEY_TODO_ID = "id";
     private static final String KEY_TODO_TITLE = "title";
     private static final String KEY_TODO_COMPELTED = "completed";
+    private static final String KEY_TODO_DUEDATE = "duedate";
 
-    public static synchronized TodoItemDatabase getInstance(Context context) {
+    public static synchronized ToDoItemDatabase getInstance(Context context) {
         // Use the application context, which will ensure that you
         // don't accidentally leak an Activity's context.
         // See this article for more information: http://bit.ly/6LRzfx
         if (sInstance == null) {
-            sInstance = new TodoItemDatabase(context.getApplicationContext());
+            sInstance = new ToDoItemDatabase(context.getApplicationContext());
         }
         return sInstance;
     }
 
-    public TodoItemDatabase(Context context) {
+    public ToDoItemDatabase(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
@@ -60,7 +64,7 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
         String CREATE_TODOITEMS_TABLE = "CREATE TABLE " + TABLE_TODOITEMS +
                 "('" +
                 KEY_TODO_ID + "' INTEGER PRIMARY KEY, '" + // Define a primary key
-                KEY_TODO_TITLE + "' TEXT, '" + KEY_TODO_COMPELTED + "' INTEGER" + ");";
+                KEY_TODO_TITLE + "' TEXT, '" + KEY_TODO_COMPELTED + "' INTEGER, '" + KEY_TODO_DUEDATE + "' TEXT" + ");";
 
         db.execSQL(CREATE_TODOITEMS_TABLE);
     }
@@ -72,7 +76,9 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion != newVersion) {
             // Simplest implementation is to drop all old tables and recreate them
-            db.execSQL("DROP TABLE IF EXISTS " + TABLE_TODOITEMS);
+            String dropTableQuery = "DROP TABLE IF EXISTS " + TABLE_TODOITEMS;
+            String updateColumnQuery = "ALTER TABLE " + TABLE_TODOITEMS + " ADD COLUMN duedate TEXT";
+            db.execSQL(dropTableQuery);
             onCreate(db);
         }
     }
@@ -104,7 +110,7 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
     }
 
     public List<ToDo> getAllToDos() {
-        List<ToDo> todos = new ArrayList<>();
+        List<ToDo> toDoList = new ArrayList<>();
 
         String POSTS_SELECT_QUERY =
                 String.format("SELECT * FROM %s", TABLE_TODOITEMS);
@@ -119,8 +125,13 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
                     ToDo newToDo = new ToDo();
                     newToDo.id = cursor.getInt(cursor.getColumnIndex(KEY_TODO_ID));
                     newToDo.title = cursor.getString(cursor.getColumnIndex(KEY_TODO_TITLE));
+                    String dueDateText = cursor.getString(cursor.getColumnIndex(KEY_TODO_DUEDATE));
+                    if (dueDateText != null) {
+                        DateFormat format = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.ENGLISH);
+                        newToDo.dueDate = format.parse(dueDateText);
+                    }
                     newToDo.completed = cursor.getInt(cursor.getColumnIndex(KEY_TODO_COMPELTED)) == 1 ? true : false;
-                    todos.add(newToDo);
+                    toDoList.add(newToDo);
                 } while(cursor.moveToNext());
             }
         } catch (Exception e) {
@@ -130,7 +141,7 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
                 cursor.close();
             }
         }
-        return todos;
+        return toDoList;
     }
 
     public int updateToDo(ToDo todo) {
@@ -138,6 +149,7 @@ public class TodoItemDatabase extends SQLiteOpenHelper{
 
         ContentValues values = new ContentValues();
         values.put(KEY_TODO_TITLE, todo.title);
+        values.put(KEY_TODO_DUEDATE, todo.dueDate.toString());
 
         // Updating profile title for todo with that Id
         return db.update(TABLE_TODOITEMS, values, KEY_TODO_ID + " = ?",
